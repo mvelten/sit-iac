@@ -1,0 +1,130 @@
+---
+- name: Uninstall old versions of Docker
+  package:
+    name: '{{ item }}'
+    state: absent
+  with_items:
+    - docker
+    - docker-engine
+    - docker.io
+
+- name: Install epel repo
+  yum:
+    name: "{{ epel_repo_url }}"
+    state: present
+  register: epel_repo_result
+
+- name: Install dependencies
+  yum:
+    name:
+      - ca-certificates
+      - python-pip
+      - python-setuptools
+      - yum-versionlock
+    state: present
+
+- name: Add docker repo
+  yum_repository:
+    name: docker
+    description: docker repo
+    baseurl: "{{ docker_yum_repository }}"
+    gpgkey: "{{ docker_yum_gpg_key_url }}"
+    gpgcheck: true
+
+- name: Update yum cache
+  yum:
+    update_cache: true
+
+- name: Check if docker packages are already installed
+  package:
+    name: "{{ packages }}"
+    state: "present"
+  vars:
+    packages:
+      - "{{ docker_ce_name }}-{{ docker_ce_version }}*"
+      - "{{ docker_ce_cli_name }}-{{ docker_ce_cli_version }}*"
+      - "{{ docker_containerd_name }}-{{ docker_containerd_version }}*"
+  register: check_if_present
+  check_mode: true
+
+- name: Ensure to whitelist docker packages for upgrading
+  command: "yum versionlock delete {{ packages }} "
+  args:
+    warn: false
+  register: yum_versionlock_output
+  changed_when: "yum_versionlock_output.rc == 0"
+  failed_when:
+    - yum_versionlock_output.rc != 0
+    - not yum_versionlock_output.stderr is search("no matches")
+  when:
+    - check_if_present is changed
+    - ansible_pkg_mgr == "yum"
+  vars:
+    packages:
+      - "{{ docker_ce_name }}-{{ docker_ce_version }}*"
+      - "{{ docker_ce_cli_name }}-{{ docker_ce_cli_version }}*"
+      - "{{ docker_containerd_name }}-{{ docker_containerd_version }}*"
+
+- name: Install Docker
+  yum:
+    name: "{{ packages }}"
+    state: "present"
+  vars:
+    packages:
+      - "{{ docker_ce_name }}-{{ docker_ce_version }}*"
+      - "{{ docker_ce_cli_name }}-{{ docker_ce_cli_version }}*"
+      - "{{ docker_containerd_name }}-{{ docker_containerd_version }}*"
+  notify: restart docker
+
+- name: Ensure docker packages to upgrade blacklist
+  raw: "yum versionlock {{ packages }}"
+  vars:
+    packages:
+      - "{{ docker_ce_name }}-{{ docker_ce_version }}*"
+      - "{{ docker_ce_cli_name }}-{{ docker_ce_cli_version }}*"
+      - "{{ docker_containerd_name }}-{{ docker_containerd_version }}*"
+  register: blacklist_output
+  changed_when: blacklist_output.rc == 0
+  when:
+    - check_if_present is changed
+    - ansible_pkg_mgr == "yum"
+
+- name: Ensure Docker is started and enabled at boot
+  systemd:
+    name: docker
+    daemon_reload: true
+    state: "{{ docker_service_state }}"
+    enabled: "{{ docker_service_enabled }}"
+
+- name: Install Docker SDK and Compose for Python
+  pip:
+    name:
+      - docker
+      - docker-compose
+
+- name: Transfer toolset to Host
+  copy:
+    src: ./data/tools/
+    dest: /opt/docker-tools/
+    mode: 0744
+
+- name: "Ensure group {{ docker_socket_group }} exists"
+  group:
+    name: "{{ docker_socket_group }}"
+    state: present
+
+- name: "Add user {{ docker_socket_user }} to group {{ docker_socket_group }}"
+  user:
+    name: "{{ docker_socket_user }}"
+    groups:
+      - "{{ docker_socket_group }}"
+
+- name: reset ssh connection to allow user changes to affect
+  meta: reset_connection
+
+- name: Copy daemon.json file for prometheus support
+  copy:
+    src: "./data/daemon.json"
+    dest: /etc/docker/daemon.json
+  notify:
+    - restart docker
