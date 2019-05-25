@@ -1,0 +1,14 @@
+---
+- name: Enforce python installation on all hosts. Works only on Ubuntu
+  hosts: all
+  become: true # activate privilege escalation (become root via sudo by default)
+  gather_facts: false # is false because it needs python first
+  pre_tasks:
+    - name: Install python
+      raw: test -e /usr/bin/python || (apt update && apt install -y python-minimal)
+      register: test
+      changed_when:
+        - test.stdout != ""
+        - test.stdout != "\r\n"
+    - name: Gathering Facts
+      setup: # Gathers facts about remote hosts (instead of gather_facts on top of playbook)
