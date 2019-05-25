@@ -1,0 +1,2 @@
+---
+- import_playbook: install-dependencies.yml # enforce python is installed to be able to run playbooks (only working on ubuntu)
