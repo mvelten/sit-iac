@@ -6,9 +6,8 @@ Vagrant.configure(2) do |config|
   ansible_playbook = ENV['ANSIBLE_PLAYBOOK']
   ansible_group = ENV['ANSIBLE_GROUP']
 
-  config.vm.define "update" do |update|
+  config.vm.define "docker" do |update|
     update.vm.box = "ubuntu/bionic64"
-    update.vm.network "public_network"
     update.vm.hostname ="docker"
 
   # VM Resources
