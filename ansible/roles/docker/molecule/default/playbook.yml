@@ -1,0 +1,10 @@
+---
+- name: Install docker
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    docker_apt_repository: "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+    ansible_user: root
+  roles:
+    - docker

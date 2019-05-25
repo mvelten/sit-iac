@@ -1,0 +1,78 @@
+---
+- name: Uninstall old versions of Docker
+  package:
+    name: '{{ item }}'
+    state: absent
+  with_items:
+    - docker
+    - docker-engine
+    - docker.io
+
+- name: Install dependencies
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - python-pip
+      - python-setuptools
+    state: present
+
+- name: Add Docker apt key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    state: present
+  register: add_repository_key
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "{{ docker_apt_repository }}"
+    state: present
+    update_cache: true
+
+- name: Check if {{ docker_package_name }} is already installed
+  package:
+    name: "{{ docker_package_name }}"
+    state: present
+  register: check_if_present
+  check_mode: true
+
+- name: Install Docker
+  package:
+    name: "{{ docker_package_name }}={{docker_version}}*"
+    state: "present"
+  notify: restart docker
+
+- name: Ensure Docker is started and enabled at boot
+  systemd:
+    name: docker
+    daemon_reload: true
+    state: "{{docker_service_state}}"
+    enabled: "{{docker_service_enabled}}"
+
+- name: Install Docker SDK for Python
+  pip:
+    name: docker
+
+- name: Install Docker-Compose
+  pip:
+    name: docker-compose
+
+- name: Transfer toolset to Host
+  copy:
+    src: ./toolset/
+    dest: /opt/docker-tools/
+
+- name: "Ensure group {{ docker_socket_group }} exists"
+  group:
+    name: "{{ docker_socket_group }}"
+    state: present
+
+- name: "Add user {{ docker_socket_user }} to group {{ docker_socket_group }}"
+  user:
+    name: "{{ docker_socket_user }}"
+    groups:
+      - "{{ docker_socket_group }}"
+
+- name: reset ssh connection to allow user changes to affect
+  meta: reset_connection

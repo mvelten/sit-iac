@@ -1,0 +1,24 @@
+---
+# Version options
+docker_package_name: docker-ce
+docker_version: 18.06.0~ce
+
+# Service options
+docker_service_state: started
+docker_service_enabled: true
+docker_restart_handler_state: restarted
+
+# Docker Socket options
+docker_socket_user: "{{ ansible_user }}"
+docker_socket_group: docker
+docker_socket_mode: 770
+
+# apt options
+docker_apt_release_channel: stable
+docker_apt_arch: amd64
+docker_apt_url: https://download.docker.com/linux/
+docker_apt_repository: "deb [arch={{ docker_apt_arch }}] {{docker_apt_url}}{{ ansible_distribution|lower }} {{ ansible_distribution_release }} {{ docker_apt_release_channel }}"
+
+# docker registry
+docker_registry_user: "{{ vault_docker_registry_user }}"
+docker_registry_password: "{{ vault_docker_registry_password }}"

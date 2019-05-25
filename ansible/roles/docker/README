@@ -1,0 +1,34 @@
+# Ansible Role: Docker Installer
+
+This Role installs Docker in a fixed version.
+
+# Requirements
+None.
+
+# Role Variables
+## The Variables for the Docker version
+- docker_package (default: docker-ce)
+- docker_version (default: 18.06.0~ce)
+   !! Please use the correct Syntax for the repository (~ instead of - between version number and ce)
+
+## The Variables to controll the state of the Docker service
+- docker_service_state: (default: started)
+- docker_service_enabled: (default: yes)
+- docker_restart_handler_state: (default: restarted)
+
+## The Variables to change owner of docket socket
+- docker_socket_user: (default: the user that ansible use)
+- docker_socket_group: (default: docker)
+- docker_socket_mode: (default: 770)
+
+## The Variables for the Docker repository settings
+- docker_apt_release_channel (default: stable)
+- docker_apt_arch (default: amd64)
+- docker_apt_url (default: https://download.docker.com/linux/)
+
+
+# Example Playbook
+---
+- hosts: all
+  roles:
+  - docker

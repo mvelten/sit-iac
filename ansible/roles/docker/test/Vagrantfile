@@ -1,0 +1,31 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+
+  ansible_playbook = ENV['ANSIBLE_PLAYBOOK']
+  ansible_group = ENV['ANSIBLE_GROUP']
+
+  #config.ssh.username = 'ubuntu'
+  config.vm.define "docker" do |docker|
+    docker.vm.box = "ubuntu/bionic64"
+    #elk.vm.network "private_network", ip: "192.168.50.10"
+    docker.vm.network "public_network"
+    docker.vm.hostname ="docker"
+
+  # VM Resources
+    docker.vm.provider "virtualbox" do |v|
+     v.memory = 8192
+     v.cpus   = 2
+    end
+
+    docker.vm.provision "ansible" do |ansible|
+      ansible.playbook = "../../../site.yml"
+      ansible.ask_vault_pass = true
+
+      ansible.groups = {
+        "docker" => ["docker"],
+      }
+    end
+  end
+end
